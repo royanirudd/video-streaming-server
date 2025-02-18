@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Video Streaming Demo</title>
+	<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			max-width: 800px;
+			margin: 0 auto;
+			padding: 20px;
+		}
+
+		video {
+			width: 100%;
+			max-width: 800px;
+			margin: 20px 0;
+		}
+
+		h1,
+		h2 {
+			color: #333;
+		}
+
+		.controls {
+			margin: 20px 0;
+		}
+
+		button {
+			padding: 10px 20px;
+			margin: 5px;
+			cursor: pointer;
+		}
+
+		.status {
+			margin: 10px 0;
+			padding: 10px;
+			border-radius: 4px;
+		}
+
+		.error {
+			background-color: #ffebee;
+			color: #c62828;
+		}
+
+		.success {
+			background-color: #e8f5e9;
+			color: #2e7d32;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Video Streaming Demo</h1>
+
+	<h2>Method 1: File System Streaming</h2>
+	<video id="fsVideo" controls>
+		<source src="/api/fs-stream/animalVideo.mp4" type="video/mp4">
+	</video>
+
+	<h2>Method 2: HLS Streaming</h2>
+	<div class="controls">
+		<button onclick="prepareHLSVideo()">Prepare HLS Stream</button>
+	</div>
+	<div id="status" class="status" style="display: none;"></div>
+	<video id="hlsVideo" controls></video>
+
+	<script>
+		function showStatus(message, isError = false) {
+			const status = document.getElementById('status');
+			status.textContent = message;
+			status.style.display = 'block';
+			status.className = `status ${isError ? 'error' : 'success'}`;
+		}
+
+		async function prepareHLSVideo() {
+			const videoFile = 'animalVideo.mp4'; // Change this to match your video filename
+			try {
+				showStatus('Preparing HLS stream... This may take a few minutes.');
+
+				const response = await fetch(`/api/hls-stream/prepare/${videoFile}`, {
+					method: 'POST'
+				});
+				const data = await response.json();
+
+				if (response.ok) {
+					showStatus('HLS stream ready!');
+					initHLSPlayer(data.playlistUrl);
+				} else {
+					throw new Error(data.error);
+				}
+			} catch (error) {
+				showStatus(error.message, true);
+			}
+		}
+
+		function initHLSPlayer(manifestUrl) {
+			const video = document.getElementById('hlsVideo');
+			if (Hls.isSupported()) {
+				const hls = new Hls();
+				hls.loadSource(manifestUrl);
+				hls.attachMedia(video);
+				hls.on(Hls.Events.MANIFEST_PARSED, function () {
+					video.play();
+				});
+			} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+				video.src = manifestUrl;
+			}
+		}
+	</script>
+</body>
+
+</html>
